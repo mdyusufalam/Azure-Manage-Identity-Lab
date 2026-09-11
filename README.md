@@ -1,6 +1,6 @@
-# IdentityLab
+# Azure Managed Identity Lab
 
-A small ASP.NET Core 8 Web API that talks to four Azure services **without a single
+A small ASP.NET Core 10 Web API that talks to four Azure services **without a single
 secret or connection string** in code or config. Every call authenticates with
 `DefaultAzureCredential` from [`Azure.Identity`](https://learn.microsoft.com/dotnet/api/overview/azure/identity-readme):
 the app's **managed identity** when running in Azure, and your **`az login` /
@@ -74,67 +74,6 @@ resource group / subscription if you prefer.
 > If your Key Vault still uses **access policies** instead of RBAC, grant a
 > *Get*/*List* **secret** permission to the identity instead of the role above.
 
-### Enable the system‑assigned identity and assign the roles (az CLI)
-
-```bash
-# --- names you fill in -------------------------------------------------------
-RG=my-rg
-APP=my-webapp                 # the App Service hosting this API
-APPCONFIG=my-appconfig
-KEYVAULT=my-keyvault
-STORAGE=mystorageacct
-TOPIC=my-eventgrid-topic
-# ---------------------------------------------------------------------------
-
-# 1. Turn on the system-assigned managed identity and capture its principal id
-PRINCIPAL_ID=$(az webapp identity assign \
-  --name "$APP" --resource-group "$RG" \
-  --query principalId -o tsv)
-
-# 2. Resolve the target resource ids to use as role-assignment scopes
-APPCONFIG_ID=$(az appconfig show   --name "$APPCONFIG" --resource-group "$RG" --query id -o tsv)
-KEYVAULT_ID=$(az keyvault show     --name "$KEYVAULT"                        --query id -o tsv)
-STORAGE_ID=$(az storage account show --name "$STORAGE" --resource-group "$RG" --query id -o tsv)
-TOPIC_ID=$(az eventgrid topic show --name "$TOPIC"   --resource-group "$RG" --query id -o tsv)
-
-# 3. Assign one role per line
-for ROLE_SCOPE in \
-  "App Configuration Data Reader|$APPCONFIG_ID" \
-  "Key Vault Secrets User|$KEYVAULT_ID" \
-  "Storage Blob Data Contributor|$STORAGE_ID" \
-  "Storage Blob Data Delegator|$STORAGE_ID" \
-  "EventGrid Data Sender|$TOPIC_ID"
-do
-  ROLE="${ROLE_SCOPE%%|*}"
-  SCOPE="${ROLE_SCOPE##*|}"
-  az role assignment create \
-    --assignee-object-id "$PRINCIPAL_ID" \
-    --assignee-principal-type ServicePrincipal \
-    --role "$ROLE" \
-    --scope "$SCOPE"
-done
-```
-
-RBAC changes can take a few minutes to propagate. A missing role shows up at
-runtime as **HTTP 403**, and the API logs which service and role to check.
-
-### App Configuration + Key Vault content
-
-The identity also needs *data* to read:
-
-```bash
-# A plain value
-az appconfig kv set --name "$APPCONFIG" --key "Demo:Message" \
-  --value "Hello from Azure App Configuration" --yes
-
-# A secret in Key Vault, exposed through App Configuration as a reference
-az keyvault secret set --vault-name "$KEYVAULT" --name "DemoSecret" --value "super-secret-value"
-SECRET_ID=$(az keyvault secret show --vault-name "$KEYVAULT" --name "DemoSecret" --query id -o tsv)
-az appconfig kv set-keyvault --name "$APPCONFIG" --key "Demo:SecretValue" \
-  --secret-identifier "$SECRET_ID" --yes
-```
-
----
 
 ## Running locally
 
@@ -180,6 +119,6 @@ endpoints need the Storage account name and Event Grid topic endpoint.
 
 ## Requirements
 
-- .NET 8 SDK (the project multi‑targets nothing — just `net8.0`)
+- .NET 10 SDK (the project multi‑targets nothing — just `net10.0`)
 - An Azure subscription with the four resources above, if you want the Azure‑backed
   endpoints to actually work
