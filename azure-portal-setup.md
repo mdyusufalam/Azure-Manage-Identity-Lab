@@ -117,8 +117,8 @@ assignment** → pick the role → **Members**: the App Service managed identity
 | --- | --- | --- |
 | App Configuration | **App Configuration Data Reader** | read key-values at startup |
 | Key Vault | **Key Vault Secrets User** | resolve the Key Vault reference from App Config |
-| Storage account | **Storage Blob  Contributor** | create container + upload blobs |
-| Storage account | **Storage Blob Data Delegator** | get the user delegation key to sign the 15-min SAS — a **separate role**, not included in Data Contributor |
+| Storage account | **Storage Blob Data Contributor** | create container + upload blobs |
+| Storage account | **Storage Blob Delegator** | get the user delegation key to sign the 15-min SAS — a **separate role**, not included in Data Contributor |
 | Event Grid Topic | **EventGrid Data Sender** | publish `FileUploaded` events |
 
 - That is **5 assignments per identity**. Running both in Azure and locally means
